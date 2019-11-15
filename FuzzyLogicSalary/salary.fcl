@@ -1,0 +1,77 @@
+/*
+	System do rekomendacji wynagrodzenia pracownika wykorzystującego
+	logikę rozmytą (fuzzy logic).
+
+	Wylicza 'salary' w zależności od 'experience', 'skills' i 'technology'
+
+	Anna Prusinowska s13677
+	Katarzyna Hawliczek s15804
+*/
+
+FUNCTION_BLOCK salary	// Definicja bloku
+
+VAR_INPUT				// Definicje danych wejściowych
+	experience : REAL;  // doświadczenie (lata)
+	skills : REAL;      // umiejętności 
+	technology : REAL;  // liczba znanych technologii
+END_VAR
+
+VAR_OUTPUT				// Definicja zmiennej wyjściowej
+	salary : REAL;
+END_VAR
+
+FUZZIFY experience	// Rozmycie zmiennej wejściowej 'experience': { 'trainee', 'junior', 'mid', 'senior' }
+	TERM trainee := (0, 1) (1, 0); 
+	TERM junior := (0, 0) (1, 1) (3, 1) (4, 0);
+	TERM mid := (3, 0) (4, 1) (5, 1) (6, 0);
+	TERM senior := (5, 0) (6, 1);
+END_FUZZIFY
+
+FUZZIFY skills	// Rozmycie zmiennej wejściowej 'skills': { 'bad', 'average', 'good', 'excellent' }
+	TERM bad := (0, 1) (1, 1) (2, 0);
+	TERM average := (1, 0) (2, 1) (3, 1) (4, 0);
+	TERM good := (3, 0) (4, 1) (7, 1) (8, 0);
+	TERM excellent := (7, 0) (8, 1) (10, 1);
+END_FUZZIFY
+
+FUZZIFY technology  // Rozmycia zmiennej wejściowej 'technology': { 'low', 'medium', 'high' }
+	TERM low := (0, 1) (2, 1) (3, 0);
+	TERM medium := (2, 0) (3, 1) (6, 1) (7, 0);
+	TERM high := (6, 0) (7, 1) (10, 1);
+END_FUZZIFY
+
+DEFUZZIFY salary  // Metoda defuzzify zmiennej wyjściowej 'salary' : {'low', 'medium', 'high' }
+	TERM low := (5, 0) (6.5, 1) (8, 0);
+	TERM medium := (8, 0) (10.5, 1) (13, 0);
+	TERM high := (13, 0) (16.5, 1) (20, 0);
+	METHOD : COG;		// Metoda defuzzify typu 'Center Of Gravity;
+	DEFAULT := 0;		// Wartość domyślna 0 (if no rule activates defuzzifier)
+END_DEFUZZIFY
+
+RULEBLOCK No1
+	AND : MIN;			// Use 'min' for 'and' (also implicit use 'max' for 'or' to fulfill DeMorgan's Law)
+	ACT : MIN;			// Use 'min' activation method
+	ACCU : MAX;			// Use 'max' accumulation method
+
+	RULE 1 : IF experience IS trainee OR technology IS low THEN salary IS low;
+	// zasada nr 1: jeżeli nie ma doświadczenia lub zna mało technologii to wypłata jest niska
+	RULE 2 : IF skills IS excellent THEN salary IS high; 
+	// zasada nr 2: jeżeli umiejętności są na wysokim poziomie, to wypłata jest wysoka
+	RULE 3 : IF experience IS junior AND technology IS medium THEN salary IS medium;
+	// zasada nr 3: jeżeli doświadczenie jest na poziomie junior i zna od 3 do 6 technologii, to wypłata jest średnia
+	RULE 4 : IF experience IS senior AND skills IS excellent AND technology IS high THEN salary IS high;
+	// zasada nr 4: jeżeli doświadczenie jest na poziomie senior i umiejętności są na wysokim poziomie, to wypłata jest wysoka
+	RULE 5 : IF skills IS bad THEN salary IS low;
+	// zasada nr 5: jeżeli umiejętności są na niskim poziomie, to wypłata jest niska
+	RULE 6 : IF experience IS mid OR skills IS good THEN salary IS medium;
+	// zasada nr 6: jeżeli doświadczenie jest od 4 do 5 lat lub umiejętności są na dobrym poziomie, to wypłata jest średnia
+	RULE 7 : IF skills IS average THEN salary IS low; 
+	// zasada nr 7: jeżeli umiejętności są na średnim poziomie, to wypłata jest niska
+	RULE 8 : IF experience IS trainee AND skills IS bad AND technology IS low THEN salary IS low;
+	// zasada nr 8: jeżeli nie ma doświadczenia i umiejętności są na niskim poziomie, to wypłata jest niska
+	RULE 9 : IF experience IS trainee AND skills IS excellent THEN salary IS medium;
+	// zasada nr 9: jeżeli nie ma doświadczenia i umiejętności są na wysokim poziomie, to wypłata jest średnia
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK
+
